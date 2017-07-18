@@ -9,6 +9,7 @@
  * License: GPL2+
  */
 
+require_once 'views/admin.php';
 
 $blog_version = get_bloginfo('version');
 
@@ -39,6 +40,8 @@ class Rest_Protect {
     public function add_hooks()
     {
         add_filter( 'rest_authentication_errors', array( $this, 'rest_authentication' ) );
+
+        add_action( 'admin_menu', array( $this, 'admin_menu' ) );
     }
 
     /**
@@ -48,10 +51,34 @@ class Rest_Protect {
      */
     public function rest_authentication( $access )
     {
-        if ( $_SERVER['SERVER_ADDR'] !== $_SERVER['REMOTE_ADDR'] ) {
-            return new WP_Error( 'Unauthorized', 'This wordpress blog is not the origin of this request', array( 'status' => rest_authorization_required_code() ) );
+        $whitelist = get_option( 'protect_rest_api_whitelist' );
+
+        if ( !empty( $whitelist ) ) {
+            $whitelist = array_map( 'trim', explode( ',', $whitelist ) );
         }
 
-        return $access;
+        $server_ip = gethostbyname($_SERVER['SERVER_NAME']);
+
+        $request_ip = gethostbyname($_SERVER['REMOTE_ADDR']);
+
+        if (
+            $_SERVER['SERVER_ADDR'] === $_SERVER['REMOTE_ADDR'] ||
+            $server_ip === $request_ip ||
+            in_array( $server_ip, $whitelist ) ||
+            in_array( $_SERVER['SERVER_ADDR'], $whitelist )
+        ) {
+            return $access;
+        }
+
+        return new WP_Error( 'Unauthorized', 'This wordpress blog is not the origin of this request', array( 'status' => rest_authorization_required_code() ) );
     }
+
+    /**
+     * add menu page
+     */
+    public function admin_menu()
+    {
+        add_menu_page( 'Protect Rest Api', 'Protect Rest Api', 'manage_options', 'protect_rest_api_admin', array( Admin::class, 'render' ) );
+    }
+
 }

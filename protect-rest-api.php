@@ -9,7 +9,7 @@
  * License: GPL2+
  */
 
-require_once 'views/admin.php';
+require_once __DIR__ . 'views/Admin.php';
 
 $blog_version = get_bloginfo('version');
 
